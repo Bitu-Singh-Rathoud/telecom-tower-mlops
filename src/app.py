@@ -96,24 +96,40 @@ MODEL_STATE = {
 }
 
 
+def _load_model_state():
+    """Helper to locate and load model artifact safely."""
+    if MODEL_STATE["model"] is not None:
+        return True
+    model_path = os.getenv("MODEL_PATH")
+    if not model_path:
+        cand1 = "artifacts/model_v1.0.0.joblib"
+        cand2 = os.path.join(os.path.dirname(__file__), "..", "artifacts", "model_v1.0.0.joblib")
+        cand2 = os.path.abspath(cand2)
+        model_path = cand1 if os.path.exists(cand1) else cand2
+
+    if os.path.exists(model_path):
+        bundle = joblib.load(model_path)
+        MODEL_STATE["bundle"] = bundle
+        MODEL_STATE["model"] = bundle["model"]
+        MODEL_STATE["transformer"] = bundle["transformer"]
+        MODEL_STATE["threshold"] = bundle.get("threshold", 0.5)
+        MODEL_STATE["version"] = bundle.get("version", "v1.0.0")
+        MODEL_STATE["features"] = bundle.get("feature_names", [])
+        return True
+    return False
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
     Startup: Loads the model once into memory.
     Shutdown: Gracefully cleans up resources.
     """
-    model_path = os.getenv("MODEL_PATH", "artifacts/model_v1.0.0.joblib")
-    print(f"[*] Initializing service. Loading model artifact from '{model_path}'...")
-    if not os.path.exists(model_path):
+    print("[*] Initializing service. Loading model artifact...")
+    if not _load_model_state():
+        model_path = os.getenv("MODEL_PATH", "artifacts/model_v1.0.0.joblib")
         raise RuntimeError(f"Fatal: Model artifact '{model_path}' not found!")
 
-    bundle = joblib.load(model_path)
-    MODEL_STATE["bundle"] = bundle
-    MODEL_STATE["model"] = bundle["model"]
-    MODEL_STATE["transformer"] = bundle["transformer"]
-    MODEL_STATE["threshold"] = bundle.get("threshold", 0.5)
-    MODEL_STATE["version"] = bundle.get("version", "v1.0.0")
-    MODEL_STATE["features"] = bundle.get("feature_names", [])
     MODEL_STATE["start_time"] = time.time()
     print(f"[+] Model '{MODEL_STATE['version']}' successfully loaded at startup.")
     yield
@@ -178,6 +194,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # -------------------------------------------------------------
 def _score_records(records: List[TowerTelemetryInput]) -> List[TowerPredictionOutput]:
     """Helper that transforms raw inputs and executes model scoring."""
+    if not records:
+        return []
+
+    if MODEL_STATE["model"] is None or MODEL_STATE["transformer"] is None:
+        _load_model_state()
+
     if MODEL_STATE["model"] is None or MODEL_STATE["transformer"] is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -263,6 +285,11 @@ def predict(payload: Union[TowerTelemetryInput, BatchTelemetryInput, List[TowerT
         scored = _score_records([payload])
         return scored[0]
     elif isinstance(payload, BatchTelemetryInput):
+        if not payload.towers:
+            raise HTTPException(
+                status_code=422,
+                detail="Batch prediction payload list must not be empty.",
+            )
         scored = _score_records(payload.towers)
         fail_count = sum(1 for p in scored if p.predicted_failure_48h == 1)
         return BatchPredictionOutput(
@@ -271,6 +298,11 @@ def predict(payload: Union[TowerTelemetryInput, BatchTelemetryInput, List[TowerT
             predictions=scored,
         )
     elif isinstance(payload, list):
+        if len(payload) == 0:
+            raise HTTPException(
+                status_code=422,
+                detail="Batch prediction payload list must not be empty.",
+            )
         scored = _score_records(payload)
         fail_count = sum(1 for p in scored if p.predicted_failure_48h == 1)
         return BatchPredictionOutput(
@@ -285,6 +317,11 @@ def predict(payload: Union[TowerTelemetryInput, BatchTelemetryInput, List[TowerT
 @app.post("/predict/batch", response_model=BatchPredictionOutput)
 def predict_batch(payload: BatchTelemetryInput):
     """Explicit batch prediction endpoint accepting {'towers': [...]}."""
+    if not payload.towers:
+        raise HTTPException(
+            status_code=422,
+            detail="Batch prediction payload list must not be empty.",
+        )
     scored = _score_records(payload.towers)
     fail_count = sum(1 for p in scored if p.predicted_failure_48h == 1)
     return BatchPredictionOutput(
@@ -297,6 +334,8 @@ def predict_batch(payload: BatchTelemetryInput):
 @app.get("/health", response_model=HealthResponse)
 def health():
     """Service health inspection endpoint (Task 3 & 7)."""
+    if MODEL_STATE["model"] is None:
+        _load_model_state()
     uptime = time.time() - MODEL_STATE["start_time"]
     MODEL_UPTIME_SECONDS.set(uptime)
     is_ready = MODEL_STATE["model"] is not None
@@ -311,10 +350,12 @@ def health():
 @app.get("/version", response_model=VersionResponse)
 def version():
     """Model version and serving configuration metadata (Task 3)."""
+    if MODEL_STATE["model"] is None:
+        _load_model_state()
     return VersionResponse(
         service_name="telecom-tower-failure-service",
         model_version=MODEL_STATE["version"],
-        algorithm="HistGradientBoostingClassifier",
+        algorithm="RandomForestClassifier",
         features=MODEL_STATE["features"],
         threshold=MODEL_STATE["threshold"],
     )

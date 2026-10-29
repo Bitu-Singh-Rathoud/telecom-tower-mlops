@@ -1,0 +1,20 @@
+{
+  "total_rows": 1500,
+  "total_columns": 10,
+  "feature_columns": [
+    "Temperature_C",
+    "Battery_Voltage",
+    "Power_Consumption_W",
+    "Signal_Strength_Percent",
+    "Fan_Speed_RPM",
+    "Humidity_Percent",
+    "Traffic_Load",
+    "Tower_Age_Years"
+  ],
+  "target_column": "Failure_Within_48Hrs",
+  "failure_count": 312,
+  "normal_count": 1188,
+  "failure_rate_pct": 20.8,
+  "duplicate_rows": 0,
+  "missing_values_total": 180
+}

@@ -109,3 +109,49 @@ docker stop telecom_tower_service
 # 3. View the timestamped recovery log
 tail -n 10 /var/log/telecom_watchdog.log
 ```
+
+---
+
+## 6. Comprehensive Automated Test Suite (69 Tests)
+
+Run the full pytest suite covering unit tests, schema boundaries, API endpoints, empty payload handling, 50-sample prediction parity, and model artifact integrity:
+
+```bash
+pytest tests/test_pytest_suite.py -v
+```
+
+All 69 tests pass with zero failures.
+
+---
+
+## 7. Academic Deliverables & Reports
+
+This repository includes a complete, evidence-backed academic documentation package for postgraduate evaluation:
+
+| Deliverable | File Path | Format & Details |
+| :--- | :--- | :--- |
+| **Academic Technical Report** | [`reports/Telecom_Tower_MLOps_Technical_Report.docx`](reports/Telecom_Tower_MLOps_Technical_Report.docx) | Full 9-Chapter formal report with embedded figures & tables |
+| **Academic Technical Report (PDF)** | [`reports/Telecom_Tower_MLOps_Technical_Report.pdf`](reports/Telecom_Tower_MLOps_Technical_Report.pdf) | Print-ready PDF report |
+| **Comprehensive Viva Guide** | [`reports/Telecom_Tower_MLOps_Viva_Guide.docx`](reports/Telecom_Tower_MLOps_Viva_Guide.docx) | 45 In-depth Q&As, 2-min pitch, 5-min walkthrough, trap defenses |
+| **Comprehensive Viva Guide (PDF)** | [`reports/Telecom_Tower_MLOps_Viva_Guide.pdf`](reports/Telecom_Tower_MLOps_Viva_Guide.pdf) | Print-ready PDF viva guide |
+| **Evidence Index** | [`reports/EVIDENCE_INDEX.md`](reports/EVIDENCE_INDEX.md) | Traceability matrix mapping claims to code and outputs |
+| **Project Technical Audit** | [`PROJECT_AUDIT.md`](PROJECT_AUDIT.md) | Complete component inventory and defect resolution log |
+| **Repository Inventory** | [`REPOSITORY_INVENTORY.md`](REPOSITORY_INVENTORY.md) | File-by-file technical catalog |
+| **Requirements & Gap Analysis** | [`REQUIREMENTS_AND_GAPS.md`](REQUIREMENTS_AND_GAPS.md) | Syllabus topic mapping and defect closure |
+| **Changelog** | [`CHANGELOG.md`](CHANGELOG.md) | Chronological version history |
+
+---
+
+## 8. Reproducing Experiments & Regenerating Outputs
+
+```bash
+# 1. Run reproducible Exploratory Data Analysis (generates figures 01-05 and summary tables)
+python -m src.eda
+
+# 2. Run independent Model Evaluation (generates figures 06-10, ROC/PR curves, comparison CSV, and metrics.json)
+python -m src.evaluate
+
+# 3. Regenerate formal DOCX and PDF Academic Reports
+python scripts/generate_all_reports.py
+```
+
